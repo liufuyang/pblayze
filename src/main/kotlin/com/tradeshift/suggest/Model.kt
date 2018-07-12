@@ -23,8 +23,8 @@ class Model(
     fun predict(features: Features): Map<String, Double> {
         val result = mutableMapOf<String, Double>()
 
-        for (c in modelTableStorage.getAllClasses()) {
-            val priorsCountOfClass = modelTableStorage.getPriorsCountOfClass(c)
+        for (outcome in modelTableStorage.getAllClasses()) {
+            val priorsCountOfClass = modelTableStorage.getPriorsCountOfClass(outcome)
             val totalDataCount = modelTableStorage.getTotalDataCount()
 
             var lp = 0.0
@@ -32,34 +32,37 @@ class Model(
             for ((featureName, feature) in features.map) {
                 val knownFeaturesInTable = modelTableStorage.getKnownWords(featureName)
                 val countOfUniqueWord = knownFeaturesInTable.size
+                val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, outcome)
 
                 if (feature.isText) {
                     val wordCountsForCurrentFeature = WordCounter.countWords(feature.featureValue)
                     val knownFeatures = wordCountsForCurrentFeature.keys.intersect(knownFeaturesInTable)
 
                     for (word in knownFeatures) {
-
                         val count = wordCountsForCurrentFeature[word]
-                        val countOfWordInClass = modelTableStorage.getCountOfWordInClass(featureName, c, word)
-                        val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, c)
-
-                        lp += logProbability(count!!, countOfWordInClass, countOfAllWordInClass, countOfUniqueWord)
+                        lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, count!!, word)
                     }
                 } else {
                     if (feature.featureValue in knownFeaturesInTable) {
-                        val count = 1
-                        val countOfWordInClass = modelTableStorage.getCountOfWordInClass(featureName, c, feature.featureValue)
-                        val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, c)
-
-                        lp += logProbability(count, countOfWordInClass, countOfAllWordInClass, countOfUniqueWord)
+                        lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, 1, feature.featureValue)
                     }
                 }
             }
             val finalLogP = ln(priorsCountOfClass.toDouble()) - ln(totalDataCount.toDouble()) + lp
-            result.put(c, finalLogP)
+            result.put(outcome, finalLogP)
         }
 
         return normalize(result)
+    }
+
+    private fun calculateLogProbability(featureName: String, outcome: String,
+                                        countOfUniqueWord: Int,
+                                        countOfAllWordInClass: Int,
+                                        countOfWord: Int,
+                                        word: String): Double {
+        val countOfWordInClass = modelTableStorage.getCountOfWordInClass(featureName, outcome, word)
+
+        return logProbability(countOfWord, countOfWordInClass, countOfAllWordInClass, countOfUniqueWord)
     }
 
     private fun normalize(suggestions: Map<String, Double>): Map<String, Double> {
