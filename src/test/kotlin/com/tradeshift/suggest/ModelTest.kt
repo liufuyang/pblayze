@@ -6,6 +6,7 @@ import com.tradeshift.suggest.storage.ModelTableStorage
 import com.tradeshift.suggest.storage.Outcome
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.math.abs
 import kotlin.streams.toList
 import kotlin.test.assertTrue
 
@@ -32,7 +33,7 @@ class ModelTest {
                 .average()
 
         println(acc)
-        assertTrue(abs(acc - 0.6438) < 0.00001) // sklearn MultinomialNB with a CountVectorizer gets ~0.646
+        assertTrue(abs(acc - 0.6438) < 0.0001) // sklearn MultinomialNB with a CountVectorizer gets ~0.646
     }
 
 
