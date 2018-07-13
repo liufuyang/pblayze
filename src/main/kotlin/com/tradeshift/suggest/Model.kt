@@ -21,7 +21,7 @@ class Model(
      * @return predicted outcomes and their un-normalized log-probability, e.g. {"positive": -4.566621, "negative": -2.324455}
      */
     fun predict(inputs: Inputs): Map<String, Double> {
-        val result = mutableMapOf<String, Double>()
+        val result = hashMapOf<String, Double>()
 
         for (outcome in modelTableStorage.getAllClasses()) {
             val priorsCountOfClass = modelTableStorage.getPriorsCountOfClass(outcome)

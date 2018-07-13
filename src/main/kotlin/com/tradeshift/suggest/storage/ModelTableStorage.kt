@@ -10,16 +10,16 @@ typealias FeatureName = String
  * A table to store count for a specific featureName
  */
 data class ModelTable(
-        val countOfWordInClass:  MutableTable<Outcome, FeatureName, Int> = mutableMapOf<Pair<String, String>, Int>().withDefault { 0 },
-        val countOfAllWordInClass: MutableMap<String, Int> = mutableMapOf(),
+        val countOfWordInClass:  MutableTable<Outcome, FeatureName, Int> = hashMapOf<Pair<String, String>, Int>().withDefault { 0 },
+        val countOfAllWordInClass: MutableMap<String, Int> = hashMapOf(),
         val wordsAppeared: MutableSet<String> = mutableSetOf()
 )
 
 class ModelTableStorage(
-        private val priorsCountOfClass: MutableMap<String, Int> = mutableMapOf(),
+        private val priorsCountOfClass: MutableMap<String, Int> = hashMapOf(),
         private var totalDataCount: Int = 0,
 
-        private val modelTableMapOfFeature: MutableMap<String, ModelTable> = mutableMapOf()
+        private val modelTableMapOfFeature: MutableMap<String, ModelTable> = hashMapOf()
 ){
     fun getAllClasses(): List<String> {
         return priorsCountOfClass.keys.toList()
