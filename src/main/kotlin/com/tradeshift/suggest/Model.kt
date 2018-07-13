@@ -5,12 +5,13 @@ import com.tradeshift.suggest.features.Update
 import com.tradeshift.suggest.features.WordCounter
 
 import com.tradeshift.suggest.storage.ModelTableStorage
+import com.tradeshift.suggest.storage.Storage
 import kotlin.math.ln
 
-val pseudoCount = 1.0 // reference: https://www.wikiwand.com/en/Naive_Bayes_classifier
-
 class Model(
-        private val modelTableStorage: ModelTableStorage = ModelTableStorage()) {
+        private val storage: Storage = ModelTableStorage(),
+        private val pseudoCount: Double = 1.0 // reference: https://www.wikiwand.com/en/Naive_Bayes_classifier
+        ) {
 
     private fun logProbability(count: Int, cFC: Int, cC: Int, numOfUniqueFeature: Int): Double {
         return count.toDouble() * (ln(cFC + pseudoCount) - ln(cC + numOfUniqueFeature * pseudoCount))
@@ -23,16 +24,16 @@ class Model(
     fun predict(inputs: Inputs): Map<String, Double> {
         val result = hashMapOf<String, Double>()
 
-        for (outcome in modelTableStorage.getAllClasses()) {
-            val priorsCountOfClass = modelTableStorage.getPriorsCountOfClass(outcome)
-            val totalDataCount = modelTableStorage.getTotalDataCount()
+        for (outcome in storage.getAllClasses()) {
+            val priorsCountOfClass = storage.getPriorsCountOfClass(outcome)
+            val totalDataCount = storage.getTotalDataCount()
 
             var lp = 0.0
 
             for ((featureName, featureValue) in inputs.text) {
-                val knownFeaturesInTable = modelTableStorage.getKnownWords(featureName)
+                val knownFeaturesInTable = storage.getKnownWords(featureName)
                 val countOfUniqueWord = knownFeaturesInTable.size
-                val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, outcome)
+                val countOfAllWordInClass = storage.getCountOfAllWordInClass(featureName, outcome)
 
                 val wordCountsForCurrentFeature = WordCounter.countWords(featureValue)
                 val knownFeatures = wordCountsForCurrentFeature.keys.intersect(knownFeaturesInTable)
@@ -44,9 +45,9 @@ class Model(
             }
 
             for ((featureName, featureValue) in inputs.category) {
-                val knownFeaturesInTable = modelTableStorage.getKnownWords(featureName)
+                val knownFeaturesInTable = storage.getKnownWords(featureName)
                 val countOfUniqueWord = knownFeaturesInTable.size
-                val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, outcome)
+                val countOfAllWordInClass = storage.getCountOfAllWordInClass(featureName, outcome)
 
                 if (featureValue in knownFeaturesInTable) {
                     lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, 1, featureValue)
@@ -64,7 +65,7 @@ class Model(
                                         countOfAllWordInClass: Int,
                                         countOfWord: Int,
                                         word: String): Double {
-        val countOfWordInClass = modelTableStorage.getCountOfWordInClass(featureName, outcome, word)
+        val countOfWordInClass = storage.getCountOfWordInClass(featureName, outcome, word)
 
         return logProbability(countOfWord, countOfWordInClass, countOfAllWordInClass, countOfUniqueWord)
     }
@@ -94,20 +95,20 @@ class Model(
             val input = update.inputs
 
             for ((featureName, featureValue) in input.text) { // multinomial situation
-                modelTableStorage.addOneToPriorsCountOfClass(outcome)
-                modelTableStorage.addOneToTotalDataCount()
+                storage.addOneToPriorsCountOfClass(outcome)
+                storage.addOneToTotalDataCount()
 
                 val wordCountsForCurrentFeature = WordCounter.countWords(featureValue)
                 for ((word, count) in wordCountsForCurrentFeature) {
-                    modelTableStorage.addToCountOfWordInClass(featureName, outcome, word, count)
-                    modelTableStorage.addOneToCountOfAllWordInClass(featureName, outcome, count)
+                    storage.addToCountOfWordInClass(featureName, outcome, word, count)
+                    storage.addOneToCountOfAllWordInClass(featureName, outcome, count)
                 }
             }
             for ((featureName, featureValue) in input.category) { // category situation
-                modelTableStorage.addOneToPriorsCountOfClass(outcome)
-                modelTableStorage.addOneToTotalDataCount()
-                modelTableStorage.addToCountOfWordInClass(featureName, outcome, featureValue, 1)
-                modelTableStorage.addOneToCountOfAllWordInClass(featureName, outcome, 1)
+                storage.addOneToPriorsCountOfClass(outcome)
+                storage.addOneToTotalDataCount()
+                storage.addToCountOfWordInClass(featureName, outcome, featureValue, 1)
+                storage.addOneToCountOfAllWordInClass(featureName, outcome, 1)
             }
         }
 

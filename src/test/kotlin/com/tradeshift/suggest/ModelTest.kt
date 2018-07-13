@@ -17,7 +17,7 @@ class ModelTest {
     @Test
     fun can_fit_20newsgroup() {
         val train = newsgroup("20newsgroup_train.txt")
-        val model = Model()
+        val model = Model(ModelTableStorage(), pseudoCount = 1.0)
         model.batchAdd(train)
 
         val test = newsgroup("20newsgroup_test.txt")
