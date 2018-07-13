@@ -1,10 +1,10 @@
 package com.tradeshift.suggest
 
-import com.tradeshift.suggest.features.Features
+import com.tradeshift.suggest.features.Inputs
+import com.tradeshift.suggest.features.Update
 import com.tradeshift.suggest.features.WordCounter
 
 import com.tradeshift.suggest.storage.ModelTableStorage
-import com.tradeshift.suggest.storage.Outcome
 import kotlin.math.ln
 
 val pseudoCount = 1.0 // reference: https://www.wikiwand.com/en/Naive_Bayes_classifier
@@ -20,7 +20,7 @@ class Model(
      *
      * @return predicted outcomes and their un-normalized log-probability, e.g. {"positive": -4.566621, "negative": -2.324455}
      */
-    fun predict(features: Features): Map<String, Double> {
+    fun predict(inputs: Inputs): Map<String, Double> {
         val result = mutableMapOf<String, Double>()
 
         for (outcome in modelTableStorage.getAllClasses()) {
@@ -29,23 +29,27 @@ class Model(
 
             var lp = 0.0
 
-            for ((featureName, feature) in features.map) {
+            for ((featureName, featureValue) in inputs.text) {
                 val knownFeaturesInTable = modelTableStorage.getKnownWords(featureName)
                 val countOfUniqueWord = knownFeaturesInTable.size
                 val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, outcome)
 
-                if (feature.isText) {
-                    val wordCountsForCurrentFeature = WordCounter.countWords(feature.featureValue)
-                    val knownFeatures = wordCountsForCurrentFeature.keys.intersect(knownFeaturesInTable)
+                val wordCountsForCurrentFeature = WordCounter.countWords(featureValue)
+                val knownFeatures = wordCountsForCurrentFeature.keys.intersect(knownFeaturesInTable)
 
-                    for (word in knownFeatures) {
-                        val count = wordCountsForCurrentFeature[word]
-                        lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, count!!, word)
-                    }
-                } else {
-                    if (feature.featureValue in knownFeaturesInTable) {
-                        lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, 1, feature.featureValue)
-                    }
+                for (word in knownFeatures) {
+                    val count = wordCountsForCurrentFeature[word]
+                    lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, count!!, word)
+                }
+            }
+
+            for ((featureName, featureValue) in inputs.category) {
+                val knownFeaturesInTable = modelTableStorage.getKnownWords(featureName)
+                val countOfUniqueWord = knownFeaturesInTable.size
+                val countOfAllWordInClass = modelTableStorage.getCountOfAllWordInClass(featureName, outcome)
+
+                if (featureValue in knownFeaturesInTable) {
+                    lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, 1, featureValue)
                 }
             }
             val finalLogP = ln(priorsCountOfClass.toDouble()) - ln(totalDataCount.toDouble()) + lp
@@ -75,33 +79,35 @@ class Model(
     /**
      * Creates a new model with the counts added
      */
-    fun add(outcome: String, features: Features) {
-        return batchAdd(listOf(outcome) zip listOf(features))
+    fun add(update: Update) {
+        return batchAdd(listOf(update))
     }
 
 
     /**
-     * @param outcomes List of observed Outcomes
-     * @param features List of observed Features that corresponding to the outcomes
+     * @param updates List of observed Updates
      */
-    fun batchAdd(outcomeAndFeaturePairs: List<Pair<Outcome, Features>>) {
+    fun batchAdd(updates: List<Update>) {
 
-        for ((c, _features) in outcomeAndFeaturePairs) {
-            for ((featureName, feature) in _features.map) {
+        for (update in updates) {
+            val outcome = update.outcome
+            val input = update.inputs
 
-                modelTableStorage.addOneToPriorsCountOfClass(c)
+            for ((featureName, featureValue) in input.text) { // multinomial situation
+                modelTableStorage.addOneToPriorsCountOfClass(outcome)
                 modelTableStorage.addOneToTotalDataCount()
 
-                if (feature.isText) { // multinomial situation
-                    val wordCountsForCurrentFeature = WordCounter.countWords(feature.featureValue)
-                    for ((word, count) in wordCountsForCurrentFeature) {
-                        modelTableStorage.addToCountOfWordInClass(featureName, c, word, count)
-                        modelTableStorage.addOneToCountOfAllWordInClass(featureName, c, count)
-                    }
-                } else { // categorical situation
-                    modelTableStorage.addToCountOfWordInClass(featureName, c, feature.featureValue)
-                    modelTableStorage.addOneToCountOfAllWordInClass(featureName, c)
+                val wordCountsForCurrentFeature = WordCounter.countWords(featureValue)
+                for ((word, count) in wordCountsForCurrentFeature) {
+                    modelTableStorage.addToCountOfWordInClass(featureName, outcome, word, count)
+                    modelTableStorage.addOneToCountOfAllWordInClass(featureName, outcome, count)
                 }
+            }
+            for ((featureName, featureValue) in input.category) { // category situation
+                modelTableStorage.addOneToPriorsCountOfClass(outcome)
+                modelTableStorage.addOneToTotalDataCount()
+                modelTableStorage.addToCountOfWordInClass(featureName, outcome, featureValue, 1)
+                modelTableStorage.addOneToCountOfAllWordInClass(featureName, outcome, 1)
             }
         }
 
