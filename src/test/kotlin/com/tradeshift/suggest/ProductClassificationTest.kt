@@ -7,7 +7,8 @@ import kotlin.streams.toList
 
 class ProductClassificationTest {
 
-    @Test
+    // To run this test, firstly prepare train and test csv
+    // @Test
     fun can_fit_product_classification() {
         val train = productClassification("train.csv")
         val model = Model(ModelTableStorage(), pseudoCount = 0.01)
