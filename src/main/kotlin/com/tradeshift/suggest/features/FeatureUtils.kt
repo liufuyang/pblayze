@@ -12,7 +12,7 @@ object WordCounter {
                 .trim()
                 .toLowerCase()
                 .split(" ")
-//                .filter { it !in stopWords }
+                .filter { it !in stopWords }
         // with this setup, the 20newsgroup score is above 0.64
 
         return returnString.groupingBy { it }.eachCount()
