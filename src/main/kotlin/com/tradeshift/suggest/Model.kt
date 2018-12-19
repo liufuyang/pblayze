@@ -38,9 +38,10 @@ class Model(
                 val wordCountsForCurrentFeature = WordCounter.countWords(featureValue)
                 val knownFeatures = wordCountsForCurrentFeature.keys.intersect(knownFeaturesInTable)
 
-                for (word in knownFeatures) {
-                    val count = wordCountsForCurrentFeature[word]
-                    lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, count!!, word)
+                for (entry in wordCountsForCurrentFeature.entries) {
+                    if (knownFeatures.contains(entry.key)) {
+                        lp += calculateLogProbability(featureName, outcome, countOfUniqueWord, countOfAllWordInClass, entry.value, entry.key)
+                    }
                 }
             }
 
